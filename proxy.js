@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const publicPaths = ["/login", "/register", "/", "/logout"];
+const publicPaths = ["/login", "/register", "/", "/logout", "/dashboard"];
 
 // Export as 'proxy' for Next.js 16+
 export function proxy(request) {
@@ -19,7 +19,7 @@ export function proxy(request) {
   response.headers.set("Expires", "0");
 
   // Allow public paths
-  if (publicPaths.includes(pathname)) {
+  if (publicPaths.includes(pathname) || pathname === "/dashboard") {
     // If user is logged in and tries to access login/register, redirect to dashboard
     if (token && (pathname === "/login" || pathname === "/register")) {
       return NextResponse.redirect(new URL("/dashboard", request.url));
@@ -27,9 +27,8 @@ export function proxy(request) {
     return response;
   }
 
-  // Protect dashboard and other authenticated routes
+  // Protect other administrative routes if unauthenticated
   const protectedPrefixes = [
-    "/dashboard",
     "/inventory",
     "/assignments",
     "/livestock",
