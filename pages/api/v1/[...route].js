@@ -6,7 +6,7 @@ export default function handler(req, res) {
   const routeParts = req.query.route || [];
   req.url = `/api/v1/${routeParts.join('/')}`;
   
-  // Preserve query string if present
+  // Preserve query string if present and strip Next.js catch-all `route` param
   const queryString = new URL(req.url, 'http://localhost').search;
   if (Object.keys(req.query).length > 1 || queryString) {
     const params = new URLSearchParams();
@@ -17,6 +17,7 @@ export default function handler(req, res) {
       req.url += '?' + params.toString();
     }
   }
+  delete req.query.route;
   
   return app(req, res);
 }

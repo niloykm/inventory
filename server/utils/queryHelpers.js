@@ -14,6 +14,7 @@ exports.parseQueryOptions = (query) => {
     limit = 10,
     sort = "-createdAt",
     search = "",
+    route,
     _t,
     flat,
     timestamp,
