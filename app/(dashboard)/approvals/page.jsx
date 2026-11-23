@@ -50,6 +50,7 @@ import { format } from "date-fns";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { InputDialog } from "@/components/ui/input-dialog";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 
 const statusColors = {
   pending: "bg-yellow-100 text-yellow-800",
@@ -64,7 +65,7 @@ const priorityColors = {
 };
 
 export default function ApprovalsPage() {
-  const { token, user } = useAuth();
+  const {token, user, isLoading: authLoading } = useAuth();
   const [approvals, setApprovals] = useState([]);
   const [pending, setPending] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,10 +80,10 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     fetchApprovals();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchApprovals() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const [allResult, pendingResult] = await Promise.all([
@@ -211,6 +212,10 @@ export default function ApprovalsPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Approval Workflows" />;
   }
 
   return (

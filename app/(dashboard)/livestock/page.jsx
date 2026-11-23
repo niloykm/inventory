@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner"
 import { Plus, Edit, Trash } from "lucide-react"
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 import { useRouter } from "next/navigation"
 
 const healthColors = {
@@ -20,7 +21,7 @@ const healthColors = {
 }
 
 export default function LivestockPage() {
-  const { token, user } = useAuth()
+  const {token, user, isLoading: authLoading } = useAuth();
   const router = useRouter()
   const [livestock, setLivestock] = useState([])
   const [loading, setLoading] = useState(true)
@@ -32,7 +33,7 @@ export default function LivestockPage() {
   }, [token])
 
   async function fetchLivestock() {
-    if (!token) return
+    if (!token) { if (!authLoading) setLoading(false); return; }
     
     try {
       const data = await livestockApi.getAll(token)
@@ -62,6 +63,10 @@ export default function LivestockPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Livestock Records" />;
   }
 
   return (

@@ -21,8 +21,8 @@ import {
   LogOut,
   LogIn,
   Bell,
-  ChevronDown,
 } from "lucide-react";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Sheet,
   SheetContent,
@@ -121,27 +121,25 @@ export function Header() {
           <Search className="h-4 w-4" />
         </Button>
 
-        {/* Unified Accessible Warehouse Location Switcher (Zero hidden <select>) */}
-        <div className="relative flex items-center">
-          <Building2
-            aria-hidden="true"
-            className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-zinc-400"
-          />
-          <select
-            aria-label="Active warehouse location"
+        {/* Unified Accessible Warehouse Location Switcher with paired <label htmlFor> */}
+        <div className="flex items-center gap-2">
+          <label
+            htmlFor="header-warehouse-select"
+            className="sr-only xl:not-sr-only text-xs font-medium text-zinc-500 whitespace-nowrap"
+          >
+            Warehouse
+          </label>
+          <NativeSelect
+            id="header-warehouse-select"
+            size="sm"
+            icon={<Building2 className="h-3.5 w-3.5" />}
             value={selectedLocation}
             onChange={(e) => setSelectedLocation(e.target.value)}
-            className="h-8 w-[145px] sm:w-[195px] appearance-none rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 pl-8 pr-7 text-xs font-medium text-zinc-900 dark:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 transition-colors cursor-pointer truncate"
-          >
-            {locations.map((loc) => (
-              <option key={loc.id} value={loc.id}>
-                {loc.name}
-              </option>
-            ))}
-          </select>
-          <ChevronDown
-            aria-hidden="true"
-            className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-zinc-400"
+            options={locations.map((loc) => ({
+              value: loc.id,
+              label: loc.name,
+            }))}
+            wrapperClassName="w-[155px] sm:w-[225px]"
           />
         </div>
 

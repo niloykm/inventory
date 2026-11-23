@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { SUPPLIERS } from "@/data/inventory";
+import { PreviewModeBanner } from "@/components/ui/auth-gate-card";
 import apiClient from "@/lib/api-client";
 import {
   Card,
@@ -48,7 +50,7 @@ const statusColors = {
 };
 
 export default function SuppliersPage() {
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
   const [suppliers, setSuppliers] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,9 +59,33 @@ export default function SuppliersPage() {
   const [formData, setFormData] = useState({});
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      const mapped = SUPPLIERS.map((s) => ({
+        _id: s.id,
+        name: s.name,
+        code: s.id.toUpperCase(),
+        contact_person: s.contactPerson,
+        email: s.email,
+        phone: s.phone,
+        status: "active",
+        rating: s.rating,
+        payment_terms: `Net ${s.leadTimeDays * 6}`,
+        currency: "BDT",
+      }));
+      setSuppliers(mapped);
+      setStats({
+        total: mapped.length,
+        active: mapped.length,
+        inactive: 0,
+        average_rating: 4.7,
+      });
+      setLoading(false);
+      return;
+    }
     fetchSuppliers();
     fetchStats();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchSuppliers() {
     if (!token) return;
@@ -143,9 +169,10 @@ export default function SuppliersPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+      <div className="space-y-4">
+        {!token && <PreviewModeBanner moduleName="Suppliers" />}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-3xl font-bold tracking-tight">Suppliers</h2>
           <Button
             onClick={() => {

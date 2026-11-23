@@ -14,6 +14,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -367,33 +368,24 @@ export function InventoryLedger({
               )}
             </div>
 
-            {/* Accessible Native Category Filter (Zero aria-hidden select) */}
-            <div className="relative flex items-center">
-              <SlidersHorizontal
-                aria-hidden="true"
-                className="pointer-events-none absolute left-2.5 h-3.5 w-3.5 text-zinc-400"
-              />
-              <select
-                aria-label="Filter inventory by category"
-                value={selectedCategory}
-                onChange={(e) => {
-                  setSelectedCategory(e.target.value);
-                  setCurrentPage(1);
-                }}
-                className="h-8 w-[165px] appearance-none rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 pl-8 pr-7 text-xs font-medium text-zinc-900 dark:text-zinc-100 hover:border-zinc-300 dark:hover:border-zinc-700 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 cursor-pointer"
-              >
-                <option value="all">All Categories</option>
-                {categories.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="pointer-events-none absolute right-2 h-3.5 w-3.5 text-zinc-400"
-              />
-            </div>
+            {/* Unified Accessible Category Filter with paired <label htmlFor> */}
+            <NativeSelect
+              id="ledger-category-filter"
+              label="Filter by category"
+              srOnlyLabel
+              size="sm"
+              icon={<SlidersHorizontal className="h-3.5 w-3.5" />}
+              value={selectedCategory}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value);
+                setCurrentPage(1);
+              }}
+              options={[
+                { value: "all", label: "All Categories" },
+                ...categories.map((c) => ({ value: c, label: c })),
+              ]}
+              wrapperClassName="w-[180px]"
+            />
 
             {/* Shared-Element Animated Status Tabs */}
             <div
@@ -960,32 +952,27 @@ export function InventoryLedger({
 
           <span className="text-zinc-300 dark:text-zinc-700">·</span>
 
-          <label
-            htmlFor="ledger-page-size"
-            className="inline-flex items-center gap-1.5"
-          >
-            <span>Per page:</span>
-            <div className="relative">
-              <select
-                id="ledger-page-size"
-                aria-label="Rows per page"
-                value={String(pageSize)}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="h-7 w-[60px] appearance-none rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 pl-2 pr-6 text-xs font-mono text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 cursor-pointer"
-              >
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-              </select>
-              <ChevronDown
-                aria-hidden="true"
-                className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 h-3 w-3 text-zinc-400"
-              />
-            </div>
-          </label>
+          <div className="inline-flex items-center gap-1.5">
+            <label htmlFor="ledger-page-size" className="whitespace-nowrap">
+              Per page:
+            </label>
+            <NativeSelect
+              id="ledger-page-size"
+              size="sm"
+              value={String(pageSize)}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              options={[
+                { value: "10", label: "10" },
+                { value: "25", label: "25" },
+                { value: "50", label: "50" },
+              ]}
+              wrapperClassName="w-[68px]"
+              className="h-7 font-mono"
+            />
+          </div>
         </div>
 
         <div className="flex items-center gap-1.5">

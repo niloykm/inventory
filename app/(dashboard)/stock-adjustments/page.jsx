@@ -2,6 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useInventoryStore } from "@/lib/inventory-store";
+import { WAREHOUSE_LOCATIONS } from "@/data/inventory";
+import { PreviewModeBanner } from "@/components/ui/auth-gate-card";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Card,
   CardContent,
@@ -63,7 +67,8 @@ const reasonOptions = [
 ];
 
 export default function StockAdjustmentsPage() {
-  const { token, user } = useAuth();
+  const { token, user, isLoading: authLoading } = useAuth();
+  const store = useInventoryStore();
   const [adjustments, setAdjustments] = useState([]);
   const [stats, setStats] = useState({});
   const [loading, setLoading] = useState(true);
@@ -88,8 +93,45 @@ export default function StockAdjustmentsPage() {
   const canApprove = user?.role === "admin" || user?.role === "manager";
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      const previewAdj = store.movements
+        .filter((m) => m.type === "adjustment" || m.type === "audit")
+        .map((m) => ({
+          _id: m.id,
+          adjustment_number: m.reference || m.id.toUpperCase(),
+          item_id: { name: `${m.sku} — ${m.itemName}` },
+          adjustment_type: m.quantityDelta >= 0 ? "increase" : "decrease",
+          quantity: Math.abs(m.quantityDelta),
+          reason: m.reason,
+          status: "approved",
+          created_by: { username: m.operator },
+          created_at: m.timestamp,
+        }));
+      setAdjustments(previewAdj);
+      setStats({
+        total: previewAdj.length,
+        pending: 0,
+        approved: previewAdj.length,
+        total_increase: previewAdj
+          .filter((a) => a.adjustment_type === "increase")
+          .reduce((s, a) => s + a.quantity, 0),
+        total_decrease: previewAdj
+          .filter((a) => a.adjustment_type === "decrease")
+          .reduce((s, a) => s + a.quantity, 0),
+      });
+      setItems(store.items.map((i) => ({ _id: i.id, name: `${i.sku} — ${i.name}` })));
+      setLocations(
+        WAREHOUSE_LOCATIONS.filter((l) => l.id !== "all").map((l) => ({
+          _id: l.id,
+          name: l.name,
+        }))
+      );
+      setLoading(false);
+      return;
+    }
     fetchInitialData();
-  }, [token]);
+  }, [token, authLoading, store.movements, store.items]);
 
   async function fetchInitialData() {
     if (!token) return;
@@ -214,9 +256,10 @@ export default function StockAdjustmentsPage() {
   if (loading) return <PageLoader />;
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+      <div className="space-y-4">
+        {!token && <PreviewModeBanner moduleName="Stock Adjustments" />}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="text-3xl font-bold tracking-tight">Stock Adjustments</h2>
             <p className="text-muted-foreground mt-1">Manage inventory corrections and reconciliations</p>
@@ -351,88 +394,72 @@ export default function StockAdjustmentsPage() {
               <DialogDescription>Record a stock level correction</DialogDescription>
             </DialogHeader>
             <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <Label>Item</Label>
-                <Select
-                  value={formData.item_id}
-                  onValueChange={(v) => setFormData({ ...formData, item_id: v })}
-                  required
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select item" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {items.map((item) => (
-                      <SelectItem key={item._id} value={item._id}>
-                        {item.name} (Current: {item.quantity})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <NativeSelect
+                id="adj-item-select"
+                label="Item *"
+                value={formData.item_id}
+                onChange={(e) => setFormData({ ...formData, item_id: e.target.value })}
+                required
+                options={[
+                  { value: "", label: "Select item...", disabled: true },
+                  ...items.map((item) => ({
+                    value: item._id,
+                    label: `${item.name}${item.quantity !== undefined ? ` (Current: ${item.quantity})` : ""}`,
+                  })),
+                ]}
+              />
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label>Type</Label>
-                  <Select
-                    value={formData.adjustment_type}
-                    onValueChange={(v) => setFormData({ ...formData, adjustment_type: v })}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <NativeSelect
+                  id="adj-type-select"
+                  label="Adjustment Type"
+                  value={formData.adjustment_type}
+                  onChange={(e) =>
+                    setFormData({ ...formData, adjustment_type: e.target.value })
+                  }
+                  options={[
+                    { value: "increase", label: "Increase (+)" },
+                    { value: "decrease", label: "Decrease (-)" },
+                  ]}
+                />
+                <div className="flex flex-col gap-1.5">
+                  <Label
+                    htmlFor="adj-qty-input"
+                    className="text-xs font-medium text-zinc-700 dark:text-zinc-300 leading-none"
                   >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="increase">Increase (+)</SelectItem>
-                      <SelectItem value="decrease">Decrease (-)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>Quantity</Label>
+                    Quantity *
+                  </Label>
                   <Input
+                    id="adj-qty-input"
                     type="number"
                     min="0.01"
                     step="0.01"
                     value={formData.quantity}
                     onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
                     required
+                    className="h-9 font-mono text-sm tabular-nums"
                   />
                 </div>
               </div>
 
-              <div>
-                <Label>Reason</Label>
-                <Select
-                  value={formData.reason}
-                  onValueChange={(v) => setFormData({ ...formData, reason: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {reasonOptions.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <NativeSelect
+                id="adj-reason-select"
+                label="Audit Reason"
+                value={formData.reason}
+                onChange={(e) => setFormData({ ...formData, reason: e.target.value })}
+                options={reasonOptions}
+              />
 
-              <div>
-                <Label>Location</Label>
-                <Select
-                  value={formData.location_id}
-                  onValueChange={(v) => setFormData({ ...formData, location_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select location (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc._id} value={loc._id}>{loc.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <NativeSelect
+                id="adj-location-select"
+                label="Warehouse Location (Optional)"
+                value={formData.location_id}
+                onChange={(e) => setFormData({ ...formData, location_id: e.target.value })}
+                options={[
+                  { value: "", label: "All / Default Location" },
+                  ...locations.map((loc) => ({ value: loc._id, label: loc.name })),
+                ]}
+              />
 
               <div>
                 <Label>Notes</Label>

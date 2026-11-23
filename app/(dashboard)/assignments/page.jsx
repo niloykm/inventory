@@ -18,10 +18,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 import { Plus } from "lucide-react";
 
 export default function AssignmentsPage() {
-  const { token } = useAuth();
+  const {token, isLoading: authLoading } = useAuth();
   const [assignments, setAssignments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [returnDialog, setReturnDialog] = useState(null);
@@ -29,10 +30,10 @@ export default function AssignmentsPage() {
 
   useEffect(() => {
     fetchAssignments();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchAssignments() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const response = await assignmentsApi.getAll(token);
@@ -71,6 +72,10 @@ export default function AssignmentsPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Asset Assignments" />;
   }
 
   return (

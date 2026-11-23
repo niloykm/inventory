@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -34,7 +35,7 @@ import { Download, Package, AlertTriangle, Users } from "lucide-react";
 import { downloadBlob } from "@/lib/client-utils";
 
 export default function ReportsPage() {
-  const { token } = useAuth();
+  const {token, isLoading: authLoading } = useAuth();
   const [lowStock, setLowStock] = useState([]);
   const [assignedItems, setAssignedItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -42,7 +43,7 @@ export default function ReportsPage() {
 
   useEffect(() => {
     fetchReports();
-  }, [token]);
+  }, [token, authLoading]);
 
   useEffect(() => {
     if (token) {
@@ -51,7 +52,7 @@ export default function ReportsPage() {
   }, [threshold, token]);
 
   async function fetchReports() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const [lowStockResult, assignedResult] = await Promise.all([
@@ -112,6 +113,10 @@ export default function ReportsPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Inventory Reports & Analytics" />;
   }
 
   return (

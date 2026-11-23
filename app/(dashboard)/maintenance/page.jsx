@@ -49,6 +49,7 @@ import { format } from "date-fns";
 import { itemsApi } from "@/lib/api";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 
 const statusColors = {
   scheduled: "bg-blue-100 text-blue-800",
@@ -65,7 +66,7 @@ const priorityColors = {
 };
 
 export default function MaintenancePage() {
-  const { token } = useAuth();
+  const {token, isLoading: authLoading } = useAuth();
   const [maintenance, setMaintenance] = useState([]);
   const [upcoming, setUpcoming] = useState([]);
   const [items, setItems] = useState([]);
@@ -78,10 +79,10 @@ export default function MaintenancePage() {
   useEffect(() => {
     fetchMaintenance();
     fetchItems();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchMaintenance() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const [allResult, upcomingResult] = await Promise.all([
@@ -108,7 +109,7 @@ export default function MaintenancePage() {
   }
 
   async function fetchItems() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const response = await itemsApi.getAll(token);
@@ -188,6 +189,10 @@ export default function MaintenancePage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Maintenance Schedule" />;
   }
 
   return (

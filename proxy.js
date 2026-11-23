@@ -32,13 +32,14 @@ export function proxy(request) {
     return response;
   }
 
-  // Protect other administrative routes if unauthenticated
+  // Protect admin/account-only routes on direct unauthenticated loads
+  // Core Operations pages (/dashboard, /inventory, /purchase-orders, /suppliers,
+  // /stock-adjustments, /stock-movements, /stock-transfers, /locations) support
+  // interactive Preview Mode when unauthenticated and live MongoDB sync when signed in.
   const protectedPrefixes = [
-    "/inventory",
     "/assignments",
     "/livestock",
     "/feeds",
-    "/locations",
     "/users",
     "/maintenance",
     "/reservations",
@@ -47,11 +48,6 @@ export function proxy(request) {
     "/reports",
     "/settings",
     "/categories",
-    "/stock-adjustments",
-    "/stock-movements",
-    "/stock-transfers",
-    "/suppliers",
-    "/purchase-orders",
     "/product-assignments",
     "/notifications",
   ];

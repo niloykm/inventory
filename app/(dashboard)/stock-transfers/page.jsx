@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useInventoryStore } from "@/lib/inventory-store";
+import { WAREHOUSE_LOCATIONS } from "@/data/inventory";
+import { PreviewModeBanner } from "@/components/ui/auth-gate-card";
 import {
   Card,
   CardContent,
@@ -63,7 +66,8 @@ const statusColors = {
 };
 
 export default function StockTransfersPage() {
-  const { token, user } = useAuth();
+  const { token, user, isLoading: authLoading } = useAuth();
+  const store = useInventoryStore();
   const [transfers, setTransfers] = useState([]);
   const [locations, setLocations] = useState([]);
   const [items, setItems] = useState([]);
@@ -78,10 +82,44 @@ export default function StockTransfersPage() {
   const [transferToCancel, setTransferToCancel] = useState(null);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      const previewTransfers = store.movements
+        .filter((m) => m.type === "transfer" && m.quantityDelta < 0)
+        .map((m) => ({
+          _id: m.id,
+          transfer_number: m.reference || m.id.toUpperCase(),
+          from_location_id: { name: m.location },
+          to_location_id: {
+            name: m.reason?.replace(/^Transfer to\s*/i, "") || "Secondary Hub (Chittagong)",
+          },
+          items: [
+            {
+              item_id: { name: `${m.sku} — ${m.itemName}` },
+              quantity_sent: Math.abs(m.quantityDelta),
+              quantity_received: Math.abs(m.quantityDelta),
+            },
+          ],
+          status: "received",
+          transfer_date: m.timestamp,
+          created_at: m.timestamp,
+          notes: m.reason,
+        }));
+      setTransfers(previewTransfers);
+      setLocations(
+        WAREHOUSE_LOCATIONS.filter((l) => l.id !== "all").map((l) => ({
+          _id: l.id,
+          name: l.name,
+        }))
+      );
+      setItems(store.items.map((i) => ({ _id: i.id, name: `${i.sku} — ${i.name}` })));
+      setLoading(false);
+      return;
+    }
     fetchTransfers();
     fetchLocations();
     fetchItems();
-  }, [token]);
+  }, [token, authLoading, store.movements, store.items]);
 
   async function fetchTransfers() {
     if (!token) return;
@@ -268,9 +306,10 @@ export default function StockTransfersPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+      <div className="space-y-4">
+        {!token && <PreviewModeBanner moduleName="Stock Transfers" />}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-3xl font-bold tracking-tight">Stock Transfers</h2>
           <Button
             onClick={() => {

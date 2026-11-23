@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { WAREHOUSE_LOCATIONS } from "@/data/inventory";
+import { PreviewModeBanner } from "@/components/ui/auth-gate-card";
 import { locationsApi } from "@/lib/api";
 import {
   Card,
@@ -41,7 +43,7 @@ const statusColors = {
 };
 
 export default function LocationsPage() {
-  const { token, user } = useAuth();
+  const { token, user, isLoading: authLoading } = useAuth();
   const [locations, setLocations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [formDialog, setFormDialog] = useState(null);
@@ -52,8 +54,24 @@ export default function LocationsPage() {
   const canEdit = user?.role === "admin" || user?.role === "manager";
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      setLocations(
+        WAREHOUSE_LOCATIONS.filter((l) => l.id !== "all").map((l) => ({
+          _id: l.id,
+          name: l.name,
+          type: l.type,
+          status: "active",
+          address: l.city,
+          capacity: l.type === "warehouse" ? 5000 : 2500,
+          current_usage: l.type === "warehouse" ? 2140 : 860,
+        }))
+      );
+      setLoading(false);
+      return;
+    }
     fetchLocations();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchLocations() {
     if (!token) return;
@@ -109,9 +127,10 @@ export default function LocationsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+      <div className="space-y-4">
+        {!token && <PreviewModeBanner moduleName="Locations" />}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-3xl font-bold tracking-tight">Locations</h2>
           {canEdit && (
             <Button

@@ -22,9 +22,10 @@ import { toast } from "sonner";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 
 export default function UsersPage() {
-  const { token, user } = useAuth();
+  const {token, user, isLoading: authLoading } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editDialog, setEditDialog] = useState(null);
@@ -36,10 +37,10 @@ export default function UsersPage() {
 
   useEffect(() => {
     fetchUsers();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchUsers() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const result = await getAllUsers(token);
@@ -98,6 +99,10 @@ export default function UsersPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="User & Role Management" />;
   }
 
   return (

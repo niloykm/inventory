@@ -15,11 +15,12 @@ import {
 import { toast } from "sonner";
 import { Plus, Edit, Trash, AlertCircle } from "lucide-react";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 import Link from "next/link";
 import { format, isPast, parseISO } from "date-fns";
 
 export default function FeedsPage() {
-  const { token, user } = useAuth();
+  const {token, user, isLoading: authLoading } = useAuth();
   const [feeds, setFeeds] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -27,10 +28,10 @@ export default function FeedsPage() {
 
   useEffect(() => {
     fetchFeeds();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchFeeds() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const data = await feedsApi.getAll(token);
@@ -62,6 +63,10 @@ export default function FeedsPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Feed Inventory" />;
   }
 
   return (

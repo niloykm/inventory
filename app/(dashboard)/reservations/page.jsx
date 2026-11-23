@@ -39,6 +39,7 @@ import {
 import { toast } from "sonner";
 import { Calendar, Plus, Edit, Trash } from "lucide-react";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 import { itemsApi } from "@/lib/api";
 
 const statusColors = {
@@ -50,7 +51,7 @@ const statusColors = {
 };
 
 export default function ReservationsPage() {
-  const { token, user } = useAuth();
+  const {token, user, isLoading: authLoading } = useAuth();
   const [reservations, setReservations] = useState([]);
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -60,10 +61,10 @@ export default function ReservationsPage() {
   useEffect(() => {
     fetchReservations();
     fetchItems();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchReservations() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const result = await getAllReservations(token);
@@ -84,7 +85,7 @@ export default function ReservationsPage() {
   }
 
   async function fetchItems() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
 
     try {
       const response = await itemsApi.getAll(token);
@@ -165,6 +166,10 @@ export default function ReservationsPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Stock Reservations" />;
   }
 
   return (

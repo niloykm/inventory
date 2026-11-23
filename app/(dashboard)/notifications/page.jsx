@@ -42,6 +42,7 @@ import { format } from "date-fns";
 import apiClient from "@/lib/api-client";
 import { ConfirmationDialog } from "@/components/ui/confirmation-dialog";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 
 const priorityColors = {
   low: "bg-blue-100 text-blue-800",
@@ -58,7 +59,7 @@ const priorityIcons = {
 };
 
 export default function NotificationsPage() {
-  const { token } = useAuth();
+  const {token, isLoading: authLoading } = useAuth();
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [viewDialog, setViewDialog] = useState(null);
@@ -67,10 +68,10 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     fetchNotifications();
-  }, [token]);
+  }, [token, authLoading]);
 
   async function fetchNotifications() {
-    if (!token) return;
+    if (!token) { if (!authLoading) setLoading(false); return; }
     try {
       const response = await apiClient.get("/notifications", {}, token);
       setNotifications(
@@ -142,6 +143,10 @@ export default function NotificationsPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return <AuthGateCard title="Notifications Center" />;
   }
 
   return (

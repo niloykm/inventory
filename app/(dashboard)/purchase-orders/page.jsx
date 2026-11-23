@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useInventoryStore } from "@/lib/inventory-store";
+import { SUPPLIERS } from "@/data/inventory";
+import { PreviewModeBanner } from "@/components/ui/auth-gate-card";
 import {
   Card,
   CardContent,
@@ -61,7 +64,8 @@ const statusColors = {
 };
 
 export default function PurchaseOrdersPage() {
-  const { token, user } = useAuth();
+  const { token, user, isLoading: authLoading } = useAuth();
+  const store = useInventoryStore();
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [items, setItems] = useState([]);
@@ -74,10 +78,38 @@ export default function PurchaseOrdersPage() {
   const [poToDelete, setPoToDelete] = useState(null);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      setPurchaseOrders(
+        store.purchaseOrders.map((po) => ({
+          _id: po.id,
+          po_number: po.poNumber,
+          supplier_id: { _id: po.supplierId, name: po.supplierName },
+          order_date: po.createdAt,
+          expected_delivery_date: po.expectedDate,
+          status: po.status === "ordered" ? "submitted" : po.status,
+          currency: "BDT",
+          total_amount: po.totalCostBDT,
+          notes: po.notes,
+          items: [
+            {
+              item_id: { _id: po.itemId, name: `${po.sku} — ${po.itemName}` },
+              quantity: po.quantity,
+              unit_price: po.unitCost,
+              received_quantity: po.status === "received" ? po.quantity : 0,
+            },
+          ],
+        }))
+      );
+      setSuppliers(SUPPLIERS.map((s) => ({ _id: s.id, name: s.name })));
+      setItems(store.items.map((i) => ({ _id: i.id, name: `${i.sku} — ${i.name}`, price: i.unitCost })));
+      setLoading(false);
+      return;
+    }
     fetchPurchaseOrders();
     fetchSuppliers();
     fetchItems();
-  }, [token]);
+  }, [token, authLoading, store.purchaseOrders, store.items]);
 
   async function fetchPurchaseOrders() {
     if (!token) return;
@@ -237,9 +269,10 @@ export default function PurchaseOrdersPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+    <div className="container mx-auto p-4 sm:p-6 max-w-7xl">
+      <div className="space-y-4">
+        {!token && <PreviewModeBanner moduleName="Purchase Orders" />}
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-3xl font-bold tracking-tight">Purchase Orders</h2>
           <Button
             onClick={() => {

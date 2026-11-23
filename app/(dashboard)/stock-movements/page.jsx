@@ -1,8 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useInventoryStore } from "@/lib/inventory-store";
+import { WAREHOUSE_LOCATIONS } from "@/data/inventory";
 import { PageLoader } from "@/components/ui/loader";
+import { PreviewModeBanner } from "@/components/ui/auth-gate-card";
+import { NativeSelect } from "@/components/ui/native-select";
 import {
   Card,
   CardContent,
@@ -92,7 +96,8 @@ const formatMovementType = (type) => {
 };
 
 export default function StockMovementsPage() {
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
+  const store = useInventoryStore();
   const [movements, setMovements] = useState([]);
   const [items, setItems] = useState([]);
   const [locations, setLocations] = useState([]);
@@ -108,31 +113,145 @@ export default function StockMovementsPage() {
     reference_id: "",
   });
 
+  // Map local ERP store movements into the page schema when viewing in Preview Mode
+  const previewMovements = useMemo(() => {
+    return store.movements.map((m) => {
+      let movement_type = "adjustment_increase";
+      let reference_type = "adjustment";
+      if (m.type === "inbound") {
+        movement_type = "purchase";
+        reference_type = "purchase_order";
+      } else if (m.type === "outbound") {
+        movement_type = "sale";
+        reference_type = "sale_order";
+      } else if (m.type === "transfer") {
+        movement_type = m.quantityDelta >= 0 ? "transfer_in" : "transfer_out";
+        reference_type = "transfer";
+      } else if (m.quantityDelta < 0) {
+        movement_type = m.reason === "Damaged" ? "damage" : "adjustment_decrease";
+        reference_type = "adjustment";
+      }
+
+      const matchedItem = store.items.find((i) => i.sku === m.sku);
+      const matchedLoc = WAREHOUSE_LOCATIONS.find((l) => l.name === m.location);
+
+      return {
+        _id: m.id,
+        movement_type,
+        reference_type,
+        reference_number: m.reference || m.id.toUpperCase(),
+        reference_id: m.reference || "",
+        item_id: {
+          _id: matchedItem?.id || m.sku,
+          name: m.itemName,
+          sku: m.sku,
+        },
+        location_id: {
+          _id: matchedLoc?.id || m.location,
+          name: m.location,
+        },
+        quantity: m.quantityDelta,
+        quantity_before: m.previousQty ?? Math.max(0, (matchedItem?.onHand || 0) - m.quantityDelta),
+        quantity_after: m.newQty ?? (matchedItem?.onHand || 0),
+        reason: m.reason,
+        notes: `${m.reason} · Operator: ${m.operator}`,
+        performed_by: { username: m.operator, full_name: m.operator },
+        movement_date: m.timestamp,
+        created_at: m.timestamp,
+      };
+    });
+  }, [store.movements, store.items]);
+
+  const previewItems = useMemo(
+    () => store.items.map((i) => ({ _id: i.id, name: `${i.sku} — ${i.name}` })),
+    [store.items]
+  );
+
+  const previewLocations = useMemo(
+    () =>
+      WAREHOUSE_LOCATIONS.filter((l) => l.id !== "all").map((l) => ({
+        _id: l.id,
+        name: l.name,
+      })),
+    []
+  );
+
   useEffect(() => {
-    // Check for URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const transferId = urlParams.get("transfer_id");
-
-    if (transferId) {
-      // Filter by transfer reference
-      setFilters((prev) => ({
-        ...prev,
-        reference_id: transferId,
-        reference_type: "transfer",
-      }));
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const transferId = urlParams.get("transfer_id");
+      if (transferId) {
+        setFilters((prev) => ({
+          ...prev,
+          reference_id: transferId,
+          reference_type: "transfer",
+        }));
+      }
     }
+  }, []);
 
+  useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      setItems(previewItems);
+      setLocations(previewLocations);
+      setLoading(false);
+      return;
+    }
     fetchMovements();
     fetchItems();
     fetchLocations();
-  }, [token]);
+  }, [token, authLoading, previewItems, previewLocations]);
 
-  // Auto-refetch when filters change
+  // Refetch or filter whenever filters or preview data change
   useEffect(() => {
+    if (authLoading) return;
     if (token) {
       fetchMovements();
+    } else {
+      let filtered = [...previewMovements];
+      if (filters.movement_type !== "all") {
+        if (filters.movement_type === "transfer") {
+          filtered = filtered.filter(
+            (m) =>
+              m.movement_type === "transfer_in" ||
+              m.movement_type === "transfer_out"
+          );
+        } else {
+          filtered = filtered.filter(
+            (m) => m.movement_type === filters.movement_type
+          );
+        }
+      }
+      if (filters.item_id !== "all") {
+        filtered = filtered.filter((m) => m.item_id?._id === filters.item_id);
+      }
+      if (filters.location_id !== "all") {
+        filtered = filtered.filter(
+          (m) => m.location_id?._id === filters.location_id
+        );
+      }
+      if (filters.reference_type !== "all") {
+        filtered = filtered.filter(
+          (m) => m.reference_type === filters.reference_type
+        );
+      }
+      if (filters.start_date) {
+        const startTs = new Date(filters.start_date).getTime();
+        filtered = filtered.filter(
+          (m) => new Date(m.movement_date).getTime() >= startTs
+        );
+      }
+      if (filters.end_date) {
+        const endTs = new Date(filters.end_date).getTime() + 86400000;
+        filtered = filtered.filter(
+          (m) => new Date(m.movement_date).getTime() <= endTs
+        );
+      }
+      setMovements(filtered);
+      setLoading(false);
     }
-  }, [filters, token]);
+  }, [filters, token, authLoading, previewMovements]);
 
   async function fetchMovements() {
     if (!token) return;
@@ -237,12 +356,20 @@ export default function StockMovementsPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Stock Movements</h2>
-          <Badge variant="outline" className="text-lg px-4 py-2">
-            <Activity className="mr-2 h-4 w-4" />
+    <div className="w-full px-3 sm:px-5 lg:px-6 py-4">
+      <div className="space-y-4">
+        {!token && <PreviewModeBanner moduleName="Stock Movements" />}
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+              Stock Movements
+            </h1>
+            <p className="text-xs text-zinc-500">
+              Complete audit ledger of inbound receipts, dispatches, transfers, and count adjustments
+            </p>
+          </div>
+          <Badge variant="outline" className="font-mono text-xs px-3 py-1 tabular-nums">
+            <Activity className="mr-1.5 h-3.5 w-3.5" />
             {stats.total} Total Movements
           </Badge>
         </div>
@@ -307,127 +434,120 @@ export default function StockMovementsPage() {
         </div>
 
         {/* Filters */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Filters</CardTitle>
-            <CardDescription>
-              Filter stock movements by various criteria
+        <Card className="rounded-md border border-zinc-200 dark:border-zinc-800 shadow-xs">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Movement Filters</CardTitle>
+            <CardDescription className="text-xs">
+              Filter stock movements by type, SKU item, warehouse hub, reference, or date range
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-6 gap-4">
-              <div>
-                <Label>Movement Type</Label>
-                <Select
-                  value={filters.movement_type}
-                  onValueChange={(v) =>
-                    setFilters({ ...filters, movement_type: v })
-                  }
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-3">
+              <NativeSelect
+                id="sm-filter-type"
+                label="Movement Type"
+                value={filters.movement_type}
+                onChange={(e) =>
+                  setFilters({ ...filters, movement_type: e.target.value })
+                }
+                options={[
+                  { value: "all", label: "All Types" },
+                  { value: "purchase", label: "Purchase / Inbound" },
+                  { value: "sale", label: "Sale / Outbound" },
+                  { value: "transfer", label: "Transfer (All)" },
+                  { value: "transfer_in", label: "Transfer In" },
+                  { value: "transfer_out", label: "Transfer Out" },
+                  { value: "adjustment_increase", label: "Adjustment (+)" },
+                  { value: "adjustment_decrease", label: "Adjustment (-)" },
+                  { value: "return", label: "Return" },
+                  { value: "damage", label: "Damaged" },
+                  { value: "expired", label: "Expired" },
+                  { value: "assignment", label: "Assignment" },
+                ]}
+              />
+
+              <NativeSelect
+                id="sm-filter-item"
+                label="SKU / Item"
+                value={filters.item_id}
+                onChange={(e) =>
+                  setFilters({ ...filters, item_id: e.target.value })
+                }
+                options={[
+                  { value: "all", label: "All Items" },
+                  ...items.map((item) => ({
+                    value: item._id,
+                    label: item.name,
+                  })),
+                ]}
+              />
+
+              <NativeSelect
+                id="sm-filter-location"
+                label="Warehouse Location"
+                value={filters.location_id}
+                onChange={(e) =>
+                  setFilters({ ...filters, location_id: e.target.value })
+                }
+                options={[
+                  { value: "all", label: "All Locations" },
+                  ...locations.map((loc) => ({
+                    value: loc._id,
+                    label: loc.name,
+                  })),
+                ]}
+              />
+
+              <NativeSelect
+                id="sm-filter-ref"
+                label="Reference Type"
+                value={filters.reference_type}
+                onChange={(e) =>
+                  setFilters({ ...filters, reference_type: e.target.value })
+                }
+                options={[
+                  { value: "all", label: "All References" },
+                  { value: "transfer", label: "Transfer" },
+                  { value: "purchase_order", label: "Purchase Order" },
+                  { value: "sale_order", label: "Sale Order" },
+                  { value: "adjustment", label: "Adjustment" },
+                  { value: "assignment", label: "Assignment" },
+                ]}
+              />
+
+              <div className="flex flex-col gap-1.5">
+                <Label
+                  htmlFor="sm-filter-start-date"
+                  className="text-xs font-medium text-zinc-700 dark:text-zinc-300 leading-none"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All types" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All types</SelectItem>
-                    <SelectItem value="purchase">Purchase</SelectItem>
-                    <SelectItem value="sale">Sale</SelectItem>
-                    <SelectItem value="transfer">Transfer (All)</SelectItem>
-                    <SelectItem value="transfer_in">Transfer In</SelectItem>
-                    <SelectItem value="transfer_out">Transfer Out</SelectItem>
-                    <SelectItem value="adjustment_increase">
-                      Adjustment +
-                    </SelectItem>
-                    <SelectItem value="adjustment_decrease">
-                      Adjustment -
-                    </SelectItem>
-                    <SelectItem value="return">Return</SelectItem>
-                    <SelectItem value="damage">Damage</SelectItem>
-                    <SelectItem value="expired">Expired</SelectItem>
-                    <SelectItem value="assignment">Assignment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Item</Label>
-                <Select
-                  value={filters.item_id}
-                  onValueChange={(v) => setFilters({ ...filters, item_id: v })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All items" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All items</SelectItem>
-                    {items.map((item) => (
-                      <SelectItem key={item._id} value={item._id}>
-                        {item.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Location</Label>
-                <Select
-                  value={filters.location_id}
-                  onValueChange={(v) =>
-                    setFilters({ ...filters, location_id: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All locations" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All locations</SelectItem>
-                    {locations.map((loc) => (
-                      <SelectItem key={loc._id} value={loc._id}>
-                        {loc.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Reference Type</Label>
-                <Select
-                  value={filters.reference_type}
-                  onValueChange={(v) =>
-                    setFilters({ ...filters, reference_type: v })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All references" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All references</SelectItem>
-                    <SelectItem value="transfer">Transfer</SelectItem>
-                    <SelectItem value="purchase_order">
-                      Purchase Order
-                    </SelectItem>
-                    <SelectItem value="sale_order">Sale Order</SelectItem>
-                    <SelectItem value="adjustment">Adjustment</SelectItem>
-                    <SelectItem value="assignment">Assignment</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label>Start Date</Label>
+                  Start Date
+                </Label>
                 <Input
+                  id="sm-filter-start-date"
                   type="date"
                   value={filters.start_date}
                   onChange={(e) =>
                     setFilters({ ...filters, start_date: e.target.value })
                   }
+                  className="h-9 font-mono text-xs"
                 />
               </div>
-              <div>
-                <Label>End Date</Label>
+
+              <div className="flex flex-col gap-1.5">
+                <Label
+                  htmlFor="sm-filter-end-date"
+                  className="text-xs font-medium text-zinc-700 dark:text-zinc-300 leading-none"
+                >
+                  End Date
+                </Label>
                 <Input
+                  id="sm-filter-end-date"
                   type="date"
                   value={filters.end_date}
                   onChange={(e) =>
                     setFilters({ ...filters, end_date: e.target.value })
                   }
+                  className="h-9 font-mono text-xs"
                 />
               </div>
             </div>

@@ -23,9 +23,11 @@ import {
 import { toast } from "sonner";
 import { Activity, Users, FileText } from "lucide-react";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
+import { NativeSelect } from "@/components/ui/native-select";
 
 export default function AuditLogsPage() {
-  const { token } = useAuth();
+  const { token, isLoading: authLoading } = useAuth();
   const [logs, setLogs] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -36,8 +38,13 @@ export default function AuditLogsPage() {
   });
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     fetchData();
-  }, [token, filters]);
+  }, [token, authLoading, filters]);
 
   async function fetchData() {
     if (!token) return;
@@ -72,6 +79,15 @@ export default function AuditLogsPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return (
+      <AuthGateCard
+        title="Security & Audit Logs"
+        description="Sign in with an administrator account to inspect system audit trails, operator actions, and session telemetry."
+      />
+    );
   }
 
   return (
@@ -129,58 +145,55 @@ export default function AuditLogsPage() {
             </CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 md:grid-cols-3">
-            <div>
-              <Label>Action</Label>
-              <Select
-                value={filters.action}
-                onValueChange={(value) =>
-                  setFilters({ ...filters, action: value })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="All actions" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All actions</SelectItem>
-                  <SelectItem value="create">Create</SelectItem>
-                  <SelectItem value="update">Update</SelectItem>
-                  <SelectItem value="delete">Delete</SelectItem>
-                  <SelectItem value="login">Login</SelectItem>
-                  <SelectItem value="logout">Logout</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <NativeSelect
+              id="audit-filter-action"
+              label="Action"
+              value={filters.action}
+              onChange={(e) =>
+                setFilters({ ...filters, action: e.target.value })
+              }
+              options={[
+                { value: "all", label: "All actions" },
+                { value: "create", label: "Create" },
+                { value: "update", label: "Update" },
+                { value: "delete", label: "Delete" },
+                { value: "login", label: "Login" },
+                { value: "logout", label: "Logout" },
+              ]}
+            />
 
-            <div>
-              <Label>Entity Type</Label>
+            <div className="flex flex-col gap-1.5">
+              <Label
+                htmlFor="audit-filter-entity"
+                className="text-xs font-medium text-zinc-700 dark:text-zinc-300 leading-none"
+              >
+                Entity Type
+              </Label>
               <Input
+                id="audit-filter-entity"
                 placeholder="e.g., item, user, assignment"
                 value={filters.entity_type}
                 onChange={(e) =>
                   setFilters({ ...filters, entity_type: e.target.value })
                 }
+                className="h-9 text-sm"
               />
             </div>
 
-            <div>
-              <Label>Limit</Label>
-              <Select
-                value={filters.limit.toString()}
-                onValueChange={(value) =>
-                  setFilters({ ...filters, limit: parseInt(value) })
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="50">50 logs</SelectItem>
-                  <SelectItem value="100">100 logs</SelectItem>
-                  <SelectItem value="200">200 logs</SelectItem>
-                  <SelectItem value="500">500 logs</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            <NativeSelect
+              id="audit-filter-limit"
+              label="Result Limit"
+              value={filters.limit.toString()}
+              onChange={(e) =>
+                setFilters({ ...filters, limit: parseInt(e.target.value, 10) })
+              }
+              options={[
+                { value: "50", label: "50 logs" },
+                { value: "100", label: "100 logs" },
+                { value: "200", label: "200 logs" },
+                { value: "500", label: "500 logs" },
+              ]}
+            />
           </CardContent>
         </Card>
 

@@ -5,11 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { AuthGateCard } from "@/components/ui/auth-gate-card"
 import { toast } from "sonner"
 import apiClient from "@/lib/api-client"
 
 export default function SettingsPage() {
-  const { user, logout, updateUser, token } = useAuth()
+  const { user, logout, updateUser, token, isLoading: authLoading } = useAuth()
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -47,8 +48,17 @@ export default function SettingsPage() {
     }
   }
 
+  if (!authLoading && !token) {
+    return (
+      <AuthGateCard
+        title="Operator Account & Settings"
+        description="Sign in with your operator credentials to view or edit your profile, role permissions, and session settings."
+      />
+    )
+  }
+
   return (
-    <div className="container mx-auto p-6 max-w-3xl">
+    <div className="container mx-auto p-4 sm:p-6 max-w-3xl">
       <div className="space-y-6">
         <h2 className="text-3xl font-bold tracking-tight">Settings</h2>
         

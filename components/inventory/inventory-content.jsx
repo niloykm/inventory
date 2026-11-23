@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { useInventoryStore } from "@/lib/inventory-store";
+import { PreviewModeBanner } from "@/components/ui/auth-gate-card";
 import apiClient from "@/lib/api-client";
 import { ITEMS_ENDPOINTS } from "@/lib/config/api-endpoints";
 import { ItemTable } from "@/components/inventory/item-table";
@@ -14,7 +16,8 @@ import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 
 export function InventoryContent() {
-  const { token, user } = useAuth();
+  const { token, user, isLoading: authLoading } = useAuth();
+  const store = useInventoryStore();
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,8 +27,32 @@ export function InventoryContent() {
   const canEdit = user?.role === "admin" || user?.role === "manager";
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!token) {
+      setItems(
+        store.items.map((i) => ({
+          _id: i.id,
+          sku: i.sku,
+          name: i.name,
+          category: i.category,
+          quantity: i.onHand,
+          minimum_level: i.reorderPoint,
+          unit_type: i.unit,
+          status:
+            i.status === "out_of_stock"
+              ? "maintenance"
+              : i.status === "discontinued"
+              ? "retired"
+              : "available",
+          price: i.retailPrice,
+          image_url: null,
+        }))
+      );
+      setLoading(false);
+      return;
+    }
     fetchItems();
-  }, [token]);
+  }, [token, authLoading, store.items]);
 
   async function fetchItems() {
     // Allow fetching even when `token` is not present (httpOnly cookie auth)
@@ -77,13 +104,21 @@ export function InventoryContent() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Inventory</h2>
+    <div className="space-y-4">
+      {!token && <PreviewModeBanner moduleName="SKU Catalog" />}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            SKU Catalog
+          </h1>
+          <p className="text-xs text-zinc-500">
+            Master catalog of inventory SKUs, stock quantities, and unit pricing
+          </p>
+        </div>
         {canEdit && (
-          <Button asChild>
+          <Button asChild size="sm">
             <Link href="/inventory/new">
-              <Plus className="mr-2 h-4 w-4" />
+              <Plus className="mr-1.5 h-4 w-4" />
               Add Item
             </Link>
           </Button>
@@ -92,12 +127,19 @@ export function InventoryContent() {
 
       <div className="flex items-center space-x-2">
         <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <label htmlFor="inventory-search" className="sr-only">
+            Search inventory items
+          </label>
+          <Search
+            aria-hidden="true"
+            className="absolute left-2.5 top-2.5 h-4 w-4 text-zinc-400"
+          />
           <Input
-            placeholder="Search items..."
+            id="inventory-search"
+            placeholder="Search by SKU, name, or category..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8"
+            className="pl-8 h-9 text-sm"
           />
         </div>
       </div>

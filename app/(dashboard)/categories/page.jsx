@@ -38,6 +38,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { PageLoader } from "@/components/ui/loader";
+import { AuthGateCard } from "@/components/ui/auth-gate-card";
 import { SafeImage } from "@/components/ui/safe-image";
 
 export default function CategoriesPage() {
@@ -182,6 +183,15 @@ export default function CategoriesPage() {
 
   if (loading) {
     return <PageLoader />;
+  }
+
+  if (!token) {
+    return (
+      <AuthGateCard
+        title="Category Hierarchy"
+        description="Sign in as an operator or manager to browse and manage hierarchical product categories."
+      />
+    );
   }
 
   return (
