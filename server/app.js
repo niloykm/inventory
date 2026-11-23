@@ -13,15 +13,47 @@ validateEnv();
 
 const app = express();
 
-// Connect to MongoDB and keep the admin credentials synced with the environment
-(async () => {
+// Serverless-safe lazy DB initialization & one-time admin account sync
+let adminAccountSynced = false;
+let adminSyncPromise = null;
+
+const ensureDbReady = async (req, res, next) => {
+  if (
+    req.method === "OPTIONS" ||
+    req.path === "/health" ||
+    req.path === "/api/v1/health"
+  ) {
+    return next();
+  }
+
   try {
     await connectDB();
-    await ensureAdminAccountFromEnv();
+
+    if (!adminAccountSynced) {
+      if (!adminSyncPromise) {
+        adminSyncPromise = ensureAdminAccountFromEnv()
+          .then(() => {
+            adminAccountSynced = true;
+          })
+          .catch((err) => {
+            console.error("⚠️ Admin account sync failed:", err.message);
+          })
+          .finally(() => {
+            adminSyncPromise = null;
+          });
+      }
+      await adminSyncPromise;
+    }
+
+    return next();
   } catch (err) {
-    console.error("❌ Database initialization failed:", err);
+    console.error("❌ Database connection failed for request:", err.message);
+    return res.status(503).json({
+      success: false,
+      message: "Database connection temporarily unavailable. Please try again.",
+    });
   }
-})();
+};
 
 // Trust proxy configuration
 // In production behind a proxy/load balancer, this should be set to the proxy hop count
@@ -308,6 +340,9 @@ app.use(`${API_PREFIX}/auth/register`, authLimiter);
 
 // Apply general rate limiting to all API routes
 app.use(API_PREFIX, apiLimiter);
+
+// Ensure MongoDB connection & admin sync before handling DB-backed API routes
+app.use(API_PREFIX, ensureDbReady);
 
 app.use(`${API_PREFIX}/auth`, authRoutes);
 app.use(`${API_PREFIX}/items`, itemsRoutes);

@@ -67,56 +67,28 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 animated-gradient opacity-20" />
-
-      {/* Decorative elements */}
-      <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-      <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
-
-      <Card className="relative w-full max-w-md shadow-premium hover-lift glass">
-        <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-primary to-purple-600 shadow-lg">
-            <svg
-              className="h-8 w-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"
-              />
-            </svg>
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 dark:bg-zinc-950 px-4 py-12 sm:px-6 lg:px-8">
+      <Card className="w-full max-w-md rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs">
+        <CardHeader className="space-y-1.5 text-center border-b border-zinc-100 dark:border-zinc-800/80 pb-5">
+          <div className="mx-auto mb-2 flex h-10 w-10 items-center justify-center rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-mono font-bold text-sm">
+            IMS
           </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">
-            Welcome Back
+          <CardTitle className="text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+            Sign in to Niloy Inventory
           </CardTitle>
-          <CardDescription className="text-base">
-            Sign in to your inventory management account
+          <CardDescription className="text-xs text-zinc-500">
+            Enterprise inventory operations &amp; stock ledger
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-2">
+        <CardContent className="pt-5">
           <LoginForm />
         </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                New to the platform?
-              </span>
-            </div>
-          </div>
-          <p className="text-center text-sm text-muted-foreground">
+        <CardFooter className="flex flex-col space-y-3 border-t border-zinc-100 dark:border-zinc-800/80 pt-4">
+          <p className="text-center text-xs text-zinc-500">
+            New operator?{" "}
             <Link
               href="/register"
-              className="font-semibold text-primary hover:text-primary/80 transition-colors"
+              className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline transition-colors"
             >
               Create an account
             </Link>

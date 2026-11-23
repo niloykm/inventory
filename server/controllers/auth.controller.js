@@ -119,7 +119,9 @@ exports.login = async (req, res) => {
       username: req.body?.username,
       hasPassword: !!req.body?.password,
     });
-    const { username, password } = req.body;
+    const rawUsername = req.body?.username;
+    const password = req.body?.password;
+    const username = typeof rawUsername === "string" ? rawUsername.trim() : "";
 
     if (!username || !password) {
       console.log("[Auth Controller] Missing credentials");
