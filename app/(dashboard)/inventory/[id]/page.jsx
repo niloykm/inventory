@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
 import { ArrowLeft, Edit, Trash } from "lucide-react"
-import { PageLoader } from "@/components/ui/loader";
+import { PageLoader } from "@/components/ui/loader"
+import { SafeImage } from "@/components/ui/safe-image";
 
 export default function ItemDetailsPage() {
   const router = useRouter()
@@ -151,11 +152,13 @@ export default function ItemDetailsPage() {
             <CardHeader>
               <CardTitle>Item Image</CardTitle>
             </CardHeader>
-            <CardContent className="flex justify-center bg-muted/20 p-6">
-              <img 
-                src={item.image_url} 
-                alt={item.name} 
-                className="max-h-[400px] w-auto object-contain rounded-lg shadow-sm"
+            <CardContent className="flex justify-center bg-zinc-50 dark:bg-zinc-900/40 p-6">
+              <SafeImage
+                src={item.image_url}
+                alt={item.name || "Inventory item"}
+                fallbackText={item.sku || item.name || "IT"}
+                className="h-48 w-48 max-h-[320px] rounded-md object-contain"
+                fallbackClassName="h-32 w-32 text-xl"
               />
             </CardContent>
           </Card>

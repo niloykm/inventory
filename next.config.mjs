@@ -6,17 +6,8 @@ const nextConfig = {
     pagesBufferLength: 2,
   },
   images: {
+    unoptimized: true,
     remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "6210",
-        pathname: "/uploads/**",
-      },
-      {
-        protocol: "https",
-        hostname: "loremflickr.com",
-      },
       {
         protocol: "https",
         hostname: "ui-avatars.com",

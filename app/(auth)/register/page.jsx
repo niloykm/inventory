@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { PageLoader } from "@/components/ui/loader";
 import Link from "next/link";
 import { useAuth } from "@/lib/auth-context";
 import { RegisterForm } from "@/components/auth/register-form";
@@ -14,82 +13,68 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { ShieldCheck, ArrowRight } from "lucide-react";
 
 export default function RegisterPage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isLoading && isAuthenticated) {
+    if (isAuthenticated) {
       router.replace("/dashboard");
     }
-  }, [isAuthenticated, isLoading, router]);
-
-  if (isLoading) {
-    return <PageLoader />;
-  }
-
-  if (isAuthenticated) {
-    return null;
-  }
+  }, [isAuthenticated, router]);
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
-      {/* Animated gradient background */}
-      <div className="absolute inset-0 animated-gradient opacity-20" />
-
-      {/* Decorative elements */}
-      <div className="absolute -top-24 -right-24 h-96 w-96 rounded-full bg-purple-500/10 blur-3xl" />
-      <div className="absolute -bottom-24 -left-24 h-96 w-96 rounded-full bg-primary/10 blur-3xl" />
-
-      <Card className="relative w-full max-w-md shadow-premium hover-lift glass">
-        <CardHeader className="space-y-2 text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-linear-to-br from-purple-600 to-primary shadow-lg">
-            <svg
-              className="h-8 w-8 text-white"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-              />
-            </svg>
-          </div>
-          <CardTitle className="text-3xl font-bold tracking-tight">
-            Create Account
-          </CardTitle>
-          <CardDescription className="text-base">
-            Join our inventory management platform
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="pt-2">
-          <RegisterForm />
-        </CardContent>
-        <CardFooter className="flex flex-col space-y-4">
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Already have an account?
+    <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 dark:bg-zinc-950 px-4 py-10 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-4">
+        <Card className="w-full rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xs">
+          <CardHeader className="space-y-2 border-b border-zinc-100 dark:border-zinc-800/80 pb-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="flex h-9 w-9 items-center justify-center rounded-md bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900 font-mono font-bold text-xs tracking-wider">
+                  IMS
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-bold tracking-tight text-zinc-900 dark:text-zinc-100">
+                    Create Operator Account
+                  </CardTitle>
+                  <CardDescription className="text-xs text-zinc-500">
+                    Register for Niloy Inventory ERP access
+                  </CardDescription>
+                </div>
+              </div>
+              <span className="inline-flex items-center gap-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-0.5 font-mono text-[10px] font-medium text-zinc-600 dark:text-zinc-300">
+                <ShieldCheck className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                v2.5
               </span>
             </div>
-          </div>
-          <p className="text-center text-sm text-muted-foreground">
+          </CardHeader>
+
+          <CardContent className="pt-5">
+            <RegisterForm />
+          </CardContent>
+
+          <CardFooter className="flex items-center justify-between border-t border-zinc-100 dark:border-zinc-800/80 pt-4 text-xs text-zinc-500">
+            <span>
+              Already have an account?{" "}
+              <Link
+                href="/login"
+                className="font-semibold text-zinc-900 dark:text-zinc-100 hover:underline transition-colors"
+              >
+                Sign in
+              </Link>
+            </span>
             <Link
-              href="/login"
-              className="font-semibold text-primary hover:text-primary/80 transition-colors"
+              href="/dashboard"
+              className="inline-flex items-center gap-1 font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors"
             >
-              Sign in instead
+              Live Demo
+              <ArrowRight className="h-3 w-3" />
             </Link>
-          </p>
-        </CardFooter>
-      </Card>
+          </CardFooter>
+        </Card>
+      </div>
     </div>
   );
 }

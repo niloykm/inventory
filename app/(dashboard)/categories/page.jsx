@@ -38,6 +38,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { PageLoader } from "@/components/ui/loader";
+import { SafeImage } from "@/components/ui/safe-image";
 
 export default function CategoriesPage() {
   const { token } = useAuth();
@@ -137,13 +138,11 @@ export default function CategoriesPage() {
             )}
             <FolderTree className="h-4 w-4 text-zinc-500 shrink-0" />
             {node.image_url && !node.image_url.includes("loremflickr.com") && (
-              <img
+              <SafeImage
                 src={node.image_url}
                 alt={node.name}
-                onError={(e) => {
-                  e.currentTarget.style.display = "none";
-                }}
-                className="h-6 w-6 rounded object-cover border border-zinc-200 dark:border-zinc-800"
+                fallbackText={node.code || node.name}
+                className="h-6 w-6 rounded object-cover"
               />
             )}
             <span className="font-medium text-sm truncate">{node.name}</span>

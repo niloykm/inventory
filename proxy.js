@@ -18,6 +18,11 @@ export function proxy(request) {
   response.headers.set("Pragma", "no-cache");
   response.headers.set("Expires", "0");
 
+  // Immediately redirect root "/" to Operations Command Center (zero blocking loader)
+  if (pathname === "/") {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
   // Allow public paths
   if (publicPaths.includes(pathname) || pathname === "/dashboard") {
     // If user is logged in and tries to access login/register, redirect to dashboard
