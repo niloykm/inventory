@@ -96,7 +96,6 @@ export default function CategoriesPage() {
       parent_id: category.parent_id?._id || null,
       description: category.description,
       sku_prefix: category.sku_prefix,
-      sku_prefix: category.sku_prefix,
       custom_attributes: category.custom_attributes,
       image_url: category.image_url,
     });
@@ -114,14 +113,19 @@ export default function CategoriesPage() {
 
   function renderTree(nodes, level = 0) {
     return nodes.map((node) => (
-      <div key={node._id} className="border-b last:border-0">
+      <div key={node._id} className="border-b border-zinc-200 dark:border-zinc-800 last:border-0">
         <div
-          className="flex items-center justify-between p-2 hover:bg-gray-50"
+          className="flex items-center justify-between p-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors"
           style={{ paddingLeft: `${level * 20 + 8}px` }}
         >
-          <div className="flex items-center gap-2 flex-1">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
             {node.has_children ? (
-              <button onClick={() => toggleExpand(node._id)} className="p-1">
+              <button
+                type="button"
+                onClick={() => toggleExpand(node._id)}
+                className="p-1 rounded hover:bg-zinc-200/60 dark:hover:bg-zinc-800"
+                aria-label={expanded.has(node._id) ? `Collapse ${node.name}` : `Expand ${node.name}`}
+              >
                 {expanded.has(node._id) ? (
                   <ChevronDown className="h-4 w-4" />
                 ) : (
@@ -131,25 +135,29 @@ export default function CategoriesPage() {
             ) : (
               <div className="w-6" />
             )}
-            <FolderTree className="h-4 w-4 text-muted-foreground" />
-            {node.image_url && (
-              <img 
-                src={node.image_url} 
-                alt={node.name} 
-                className="h-6 w-6 rounded object-cover border"
+            <FolderTree className="h-4 w-4 text-zinc-500 shrink-0" />
+            {node.image_url && !node.image_url.includes("loremflickr.com") && (
+              <img
+                src={node.image_url}
+                alt={node.name}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+                className="h-6 w-6 rounded object-cover border border-zinc-200 dark:border-zinc-800"
               />
             )}
-            <span className="font-medium">{node.name}</span>
+            <span className="font-medium text-sm truncate">{node.name}</span>
             {node.code && (
-              <code className="text-xs text-muted-foreground">
+              <code className="font-mono text-xs text-zinc-500">
                 ({node.code})
               </code>
             )}
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-1.5">
             <Button
               variant="ghost"
               size="sm"
+              aria-label={`Edit ${node.name}`}
               onClick={() => openEditDialog(node)}
             >
               <Edit className="h-4 w-4" />
@@ -157,6 +165,7 @@ export default function CategoriesPage() {
             <Button
               variant="ghost"
               size="sm"
+              aria-label={`Delete ${node.name}`}
               onClick={() => handleDelete(node._id)}
             >
               <Trash className="h-4 w-4" />

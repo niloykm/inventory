@@ -42,6 +42,7 @@ export function proxy(request) {
     "/reports",
     "/settings",
     "/categories",
+    "/stock-adjustments",
     "/stock-movements",
     "/stock-transfers",
     "/suppliers",
@@ -53,8 +54,10 @@ export function proxy(request) {
   // Check if the pathname starts with any protected prefix
   if (protectedPrefixes.some((prefix) => pathname.startsWith(prefix))) {
     if (!token) {
-      // No token, redirect to login
-      return NextResponse.redirect(new URL("/login", request.url));
+      // Preserve intended destination so login returns the operator directly
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("redirect", pathname);
+      return NextResponse.redirect(loginUrl);
     }
   }
 

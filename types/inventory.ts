@@ -9,7 +9,9 @@ export type AdjustmentReason =
   | "Purchase Order Received"
   | "Fulfillment"
   | "Write-off"
-  | "Supplier RMA";
+  | "Supplier RMA"
+  | "Inter-Warehouse Transfer"
+  | "Purchase Order Draft";
 
 export interface WarehouseLocation {
   id: string;
@@ -68,14 +70,38 @@ export interface StockMovement {
   newQty?: number;
 }
 
+export type PurchaseOrderStatus = "draft" | "ordered" | "received";
+
+export interface PurchaseOrderDraft {
+  id: string;
+  poNumber: string;
+  itemId: string;
+  sku: string;
+  itemName: string;
+  supplierId: string;
+  supplierName: string;
+  locationId: string;
+  locationName: string;
+  quantity: number;
+  unit: string;
+  unitCost: number;
+  totalCostBDT: number;
+  expectedDate: string;
+  status: PurchaseOrderStatus;
+  notes?: string;
+  createdAt: string;
+  createdBy: string;
+}
+
 export interface KPISummary {
   totalSkus: number;
   totalValuationBDT: number;
-  valuationTrendPercent: number; // e.g. +3.4% WoW
+  valuationTrendPercent: number;
   itemsBelowReorder: number;
   outOfStockCount: number;
   pendingInboundBatches: number;
   pendingInboundUnits: number;
   deadStockCount: number;
   deadStockCapitalBDT: number;
+  highVelocityAtRiskCount: number;
 }

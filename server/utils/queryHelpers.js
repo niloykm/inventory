@@ -14,6 +14,10 @@ exports.parseQueryOptions = (query) => {
     limit = 10,
     sort = "-createdAt",
     search = "",
+    _t,
+    flat,
+    timestamp,
+    cacheBust,
     ...filters
   } = query;
 

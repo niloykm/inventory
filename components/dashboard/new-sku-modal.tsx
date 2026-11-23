@@ -12,16 +12,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { InventoryItem, WarehouseLocation, Supplier } from "@/types/inventory";
 import { toast } from "sonner";
-import { PackagePlus } from "lucide-react";
+import { PackagePlus, ChevronDown } from "lucide-react";
 
 interface NewSkuModalProps {
   isOpen: boolean;
@@ -43,7 +36,16 @@ const CATEGORIES = [
   "Chemicals & Soldering",
 ];
 
-const UNIT_TYPES = ["pcs", "boxes", "units", "spools", "rolls", "pairs", "tubs", "towers"];
+const UNIT_TYPES = [
+  "pcs",
+  "boxes",
+  "units",
+  "spools",
+  "rolls",
+  "pairs",
+  "tubs",
+  "towers",
+];
 
 export function NewSkuModal({
   isOpen,
@@ -77,16 +79,23 @@ export function NewSkuModal({
       toast.error("Product name is required.");
       return;
     }
+    if (retailPrice < unitCost) {
+      toast.warning("Notice: Retail price is lower than unit cost.");
+    }
 
     setIsSubmitting(true);
     try {
-      const selectedLoc = locations.find((l) => l.id === locationId) || locations[1];
-      const selectedSup = suppliers.find((s) => s.id === supplierId) || suppliers[0];
+      const selectedLoc =
+        locations.find((l) => l.id === locationId) || locations[1];
+      const selectedSup =
+        suppliers.find((s) => s.id === supplierId) || suppliers[0];
 
       const newItem: InventoryItem = {
         id: `item-${Date.now()}`,
         sku: sku.trim().toUpperCase(),
-        barcode: barcode.trim() || `8941${Math.floor(10000000 + Math.random() * 90000000)}`,
+        barcode:
+          barcode.trim() ||
+          `8941${Math.floor(10000000 + Math.random() * 90000000)}`,
         name: name.trim(),
         category,
         locationId: selectedLoc.id,
@@ -99,7 +108,12 @@ export function NewSkuModal({
         unitCost,
         retailPrice,
         unit,
-        status: onHand === 0 ? "out_of_stock" : onHand <= reorderPoint ? "low_stock" : "in_stock",
+        status:
+          onHand === 0
+            ? "out_of_stock"
+            : onHand <= reorderPoint
+            ? "low_stock"
+            : "in_stock",
         lastAudited: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         supplierId: selectedSup.id,
@@ -110,21 +124,24 @@ export function NewSkuModal({
       onAddSku(newItem);
       toast.success(`SKU [${newItem.sku}] added to active inventory catalog.`);
       onClose();
-      // Reset form
       setSku("");
       setName("");
       setBarcode("");
       setOnHand(50);
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to create SKU");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create SKU";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const selectClass =
+    "h-9 w-full appearance-none rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 pl-3 pr-8 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400";
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-md sm:max-w-xl border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-xl">
+      <DialogContent className="max-w-md sm:max-w-xl rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-6 shadow-xl">
         <DialogHeader className="border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-md bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
@@ -142,10 +159,12 @@ export function NewSkuModal({
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Row 1: SKU & Barcode */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label htmlFor="sku-code" className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="sku-code"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 SKU Code *
               </Label>
               <Input
@@ -154,11 +173,14 @@ export function NewSkuModal({
                 value={sku}
                 onChange={(e) => setSku(e.target.value.toUpperCase())}
                 required
-                className="mt-1 font-mono text-xs uppercase tracking-wider border-zinc-200 dark:border-zinc-800 focus-visible:ring-zinc-400"
+                className="mt-1 h-9 font-mono text-xs uppercase tracking-wider border-zinc-200 dark:border-zinc-800 focus-visible:ring-zinc-400"
               />
             </div>
             <div>
-              <Label htmlFor="barcode-num" className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="barcode-num"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Barcode / EAN-13
               </Label>
               <Input
@@ -166,15 +188,17 @@ export function NewSkuModal({
                 placeholder="Auto-generated if empty"
                 value={barcode}
                 onChange={(e) => setBarcode(e.target.value)}
-                className="mt-1 font-mono text-xs border-zinc-200 dark:border-zinc-800"
+                className="mt-1 h-9 font-mono text-xs border-zinc-200 dark:border-zinc-800"
               />
             </div>
           </div>
 
-          {/* Row 2: Product Name */}
           <div>
-            <Label htmlFor="item-title" className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
-              Item Name & Specification *
+            <Label
+              htmlFor="item-title"
+              className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+            >
+              Item Name &amp; Specification *
             </Label>
             <Input
               id="item-title"
@@ -182,145 +206,188 @@ export function NewSkuModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               required
-              className="mt-1 text-xs border-zinc-200 dark:border-zinc-800 focus-visible:ring-zinc-400"
+              className="mt-1 h-9 text-xs border-zinc-200 dark:border-zinc-800 focus-visible:ring-zinc-400"
             />
           </div>
 
-          {/* Row 3: Category & Warehouse Location */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <Label className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="new-sku-category"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Category
               </Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="mt-1 text-xs border-zinc-200 dark:border-zinc-800">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent className="border-zinc-200 dark:border-zinc-800">
+              <div className="relative mt-1">
+                <select
+                  id="new-sku-category"
+                  aria-label="Category"
+                  value={category}
+                  onChange={(e) => setCategory(e.target.value)}
+                  className={selectClass}
+                >
                   {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat} value={cat} className="text-xs">
+                    <option key={cat} value={cat}>
                       {cat}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+              </div>
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="new-sku-location"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Primary Location
               </Label>
-              <Select value={locationId} onValueChange={setLocationId}>
-                <SelectTrigger className="mt-1 text-xs border-zinc-200 dark:border-zinc-800">
-                  <SelectValue placeholder="Select warehouse" />
-                </SelectTrigger>
-                <SelectContent className="border-zinc-200 dark:border-zinc-800">
+              <div className="relative mt-1">
+                <select
+                  id="new-sku-location"
+                  aria-label="Primary warehouse location"
+                  value={locationId}
+                  onChange={(e) => setLocationId(e.target.value)}
+                  className={selectClass}
+                >
                   {locations
                     .filter((l) => l.id !== "all")
                     .map((loc) => (
-                      <SelectItem key={loc.id} value={loc.id} className="text-xs">
+                      <option key={loc.id} value={loc.id}>
                         {loc.name}
-                      </SelectItem>
+                      </option>
                     ))}
-                </SelectContent>
-              </Select>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+              </div>
             </div>
           </div>
 
-          {/* Row 4: Initial Stock & Reorder Threshold */}
           <div className="grid grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="init-stock" className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="init-stock"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Initial On-Hand
               </Label>
               <Input
                 id="init-stock"
                 type="number"
-                min="0"
+                min={0}
                 value={onHand}
-                onChange={(e) => setOnHand(parseInt(e.target.value) || 0)}
+                onChange={(e) => setOnHand(Math.max(0, parseInt(e.target.value, 10) || 0))}
                 required
-                className="mt-1 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
+                className="mt-1 h-9 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
               />
             </div>
             <div>
-              <Label htmlFor="reorder-lvl" className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="reorder-lvl"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Reorder Level
               </Label>
               <Input
                 id="reorder-lvl"
                 type="number"
-                min="0"
+                min={0}
                 value={reorderPoint}
-                onChange={(e) => setReorderPoint(parseInt(e.target.value) || 0)}
+                onChange={(e) =>
+                  setReorderPoint(Math.max(0, parseInt(e.target.value, 10) || 0))
+                }
                 required
-                className="mt-1 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
+                className="mt-1 h-9 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
               />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="new-sku-unit"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Unit Measure
               </Label>
-              <Select value={unit} onValueChange={setUnit}>
-                <SelectTrigger className="mt-1 text-xs border-zinc-200 dark:border-zinc-800">
-                  <SelectValue placeholder="Unit" />
-                </SelectTrigger>
-                <SelectContent className="border-zinc-200 dark:border-zinc-800">
+              <div className="relative mt-1">
+                <select
+                  id="new-sku-unit"
+                  aria-label="Unit of measure"
+                  value={unit}
+                  onChange={(e) => setUnit(e.target.value)}
+                  className={`${selectClass} font-mono`}
+                >
                   {UNIT_TYPES.map((u) => (
-                    <SelectItem key={u} value={u} className="text-xs font-mono">
+                    <option key={u} value={u}>
                       {u}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+              </div>
             </div>
           </div>
 
-          {/* Row 5: Financials & Supplier */}
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="unit-cost" className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="unit-cost"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Unit Cost (BDT)
               </Label>
               <Input
                 id="unit-cost"
                 type="number"
-                min="0"
+                min={0}
                 value={unitCost}
-                onChange={(e) => setUnitCost(parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  setUnitCost(Math.max(0, parseFloat(e.target.value) || 0))
+                }
                 required
-                className="mt-1 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
+                className="mt-1 h-9 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
               />
             </div>
             <div>
-              <Label htmlFor="retail-price" className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="retail-price"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Retail Price (BDT)
               </Label>
               <Input
                 id="retail-price"
                 type="number"
-                min="0"
+                min={0}
                 value={retailPrice}
-                onChange={(e) => setRetailPrice(parseFloat(e.target.value) || 0)}
+                onChange={(e) =>
+                  setRetailPrice(Math.max(0, parseFloat(e.target.value) || 0))
+                }
                 required
-                className="mt-1 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
+                className="mt-1 h-9 font-mono text-xs tabular-nums border-zinc-200 dark:border-zinc-800"
               />
             </div>
             <div>
-              <Label className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="new-sku-supplier"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Assigned Supplier
               </Label>
-              <Select value={supplierId} onValueChange={setSupplierId}>
-                <SelectTrigger className="mt-1 text-xs border-zinc-200 dark:border-zinc-800">
-                  <SelectValue placeholder="Supplier" />
-                </SelectTrigger>
-                <SelectContent className="border-zinc-200 dark:border-zinc-800">
+              <div className="relative mt-1">
+                <select
+                  id="new-sku-supplier"
+                  aria-label="Assigned supplier"
+                  value={supplierId}
+                  onChange={(e) => setSupplierId(e.target.value)}
+                  className={selectClass}
+                >
                   {suppliers.map((sup) => (
-                    <SelectItem key={sup.id} value={sup.id} className="text-xs">
+                    <option key={sup.id} value={sup.id}>
                       {sup.name}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+              </div>
             </div>
           </div>
 

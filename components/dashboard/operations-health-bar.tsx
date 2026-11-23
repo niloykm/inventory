@@ -1,15 +1,15 @@
 "use client";
 
 import React from "react";
+import { motion } from "framer-motion";
 import {
   AlertTriangle,
-  ArrowUpRight,
   TrendingUp,
-  Package,
   Truck,
   Ban,
-  Clock,
   ChevronRight,
+  Flame,
+  Archive,
 } from "lucide-react";
 import { KPISummary } from "@/types/inventory";
 
@@ -17,200 +17,237 @@ interface OperationsHealthBarProps {
   summary: KPISummary;
   activeFilter: string;
   onFilterChange: (filter: string) => void;
+  onOpenPendingPOs?: () => void;
 }
+
+const formatBDT = (amount: number): string =>
+  `BDT ${Math.round(amount).toLocaleString("en-BD")}`;
 
 export function OperationsHealthBar({
   summary,
   activeFilter,
   onFilterChange,
+  onOpenPendingPOs,
 }: OperationsHealthBarProps) {
-  const formattedValuation = new Intl.NumberFormat("en-BD", {
-    style: "currency",
-    currency: "BDT",
-    maximumFractionDigits: 0,
-  }).format(summary.totalValuationBDT);
-
-  const formattedDeadStockCapital = new Intl.NumberFormat("en-BD", {
-    style: "currency",
-    currency: "BDT",
-    maximumFractionDigits: 0,
-  }).format(summary.deadStockCapitalBDT);
+  const quickFilters = [
+    {
+      id: "all",
+      label: `All Ledger (${summary.totalSkus})`,
+      dot: null,
+    },
+    {
+      id: "low_stock",
+      label: `Below Reorder (${summary.itemsBelowReorder})`,
+      dot: "bg-amber-500",
+    },
+    {
+      id: "out_of_stock",
+      label: `Stockouts (${summary.outOfStockCount})`,
+      dot: "bg-rose-500",
+    },
+    {
+      id: "discontinued",
+      label: `Stalled / Archived (${summary.deadStockCount})`,
+      dot: "bg-zinc-400",
+    },
+  ];
 
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-xs">
-      {/* Top Banner / Operational Metric Strip */}
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-4">
-        {/* KPI 1: Asset Valuation & Total Catalog */}
-        <div className="flex flex-col justify-between rounded-md border border-zinc-100 dark:border-zinc-900 bg-zinc-50/60 dark:bg-zinc-900/40 p-3.5">
-          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            <span>Inventory Valuation</span>
-            <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 font-mono">
-              <TrendingUp className="h-3 w-3" />
-              +{summary.valuationTrendPercent}% WoW
+    <section
+      aria-label="Operations health summary"
+      className="rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 p-4 shadow-xs"
+    >
+      {/* Asymmetric Operational Metric Grid */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-12">
+        {/* KPI 1 (Wide - 4 cols): Asset Valuation & Velocity Risk */}
+        <div className="lg:col-span-4 flex flex-col justify-between rounded-md border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-3.5">
+          <div className="flex items-center justify-between gap-2 text-[11px] font-medium uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            <span>Total Inventory Valuation</span>
+            <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-400 font-mono tabular-nums">
+              <TrendingUp className="h-3 w-3" />+{summary.valuationTrendPercent}% WoW
             </span>
           </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="font-mono text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">
-              {formattedValuation}
+          <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
+            <span className="font-mono text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">
+              {formatBDT(summary.totalValuationBDT)}
             </span>
-            <span className="font-mono text-xs text-zinc-500 tabular-nums">
-              {summary.totalSkus} Active SKUs
+            <span className="font-mono text-xs text-zinc-600 dark:text-zinc-400 tabular-nums">
+              {summary.totalSkus} SKUs
             </span>
           </div>
+          {summary.highVelocityAtRiskCount > 0 && (
+            <div className="mt-2 pt-2 border-t border-zinc-200/70 dark:border-zinc-800 flex items-center justify-between text-[11px]">
+              <span className="inline-flex items-center gap-1 font-medium text-amber-800 dark:text-amber-300">
+                <Flame className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
+                {summary.highVelocityAtRiskCount} high-velocity SKUs need action today
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* KPI 2: Actionable Critical Stock Alert Pill */}
+        {/* KPI 2 (3 cols): Reorder Threshold Warnings */}
         <button
           type="button"
           onClick={() =>
             onFilterChange(activeFilter === "low_stock" ? "all" : "low_stock")
           }
-          className={`flex flex-col justify-between text-left rounded-md border p-3.5 transition-all cursor-pointer ${
+          aria-pressed={activeFilter === "low_stock"}
+          className={`lg:col-span-3 flex flex-col justify-between text-left rounded-md border p-3.5 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-500 ${
             activeFilter === "low_stock"
-              ? "border-amber-500 bg-amber-50/60 dark:bg-amber-950/30 ring-1 ring-amber-500/30"
-              : "border-amber-200/80 dark:border-amber-900/40 bg-amber-50/30 dark:bg-amber-950/10 hover:border-amber-400 dark:hover:border-amber-800"
+              ? "border-amber-600 bg-amber-50/80 dark:bg-amber-950/40 ring-1 ring-amber-500/30"
+              : "border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/15 hover:border-amber-400 dark:hover:border-amber-700"
           }`}
         >
-          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-amber-700 dark:text-amber-400">
+          <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-amber-800 dark:text-amber-300">
             <span className="flex items-center gap-1.5 font-semibold">
               <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" />
-              Reorder Threshold
+              Low Stock
             </span>
-            <span className="font-mono text-[11px] bg-amber-100 dark:bg-amber-900/50 px-1.5 py-0.5 rounded text-amber-800 dark:text-amber-300">
-              Action Req.
+            <span className="font-mono text-[10px] font-semibold bg-amber-100 dark:bg-amber-900/60 px-1.5 py-0.5 rounded text-amber-900 dark:text-amber-200">
+              Reorder
             </span>
           </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="font-mono text-2xl font-bold tracking-tight text-amber-800 dark:text-amber-200 tabular-nums">
+          <div className="mt-2 flex items-baseline justify-between gap-2">
+            <span className="font-mono text-2xl font-bold tracking-tight text-amber-900 dark:text-amber-100 tabular-nums">
               {summary.itemsBelowReorder}
             </span>
-            <span className="text-xs font-medium text-amber-700 dark:text-amber-400 flex items-center gap-0.5">
-              items below reorder point
+            <span className="text-xs font-medium text-amber-800 dark:text-amber-300 inline-flex items-center gap-0.5">
+              below reorder pt
               <ChevronRight className="h-3 w-3" />
             </span>
           </div>
         </button>
 
-        {/* KPI 3: Out of Stock & Zero Stockout Risk */}
+        {/* KPI 3 (2 cols): Out of Stock Critical */}
         <button
           type="button"
           onClick={() =>
-            onFilterChange(activeFilter === "out_of_stock" ? "all" : "out_of_stock")
+            onFilterChange(
+              activeFilter === "out_of_stock" ? "all" : "out_of_stock"
+            )
           }
-          className={`flex flex-col justify-between text-left rounded-md border p-3.5 transition-all cursor-pointer ${
+          aria-pressed={activeFilter === "out_of_stock"}
+          className={`lg:col-span-2 flex flex-col justify-between text-left rounded-md border p-3.5 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-500 ${
             activeFilter === "out_of_stock"
-              ? "border-rose-500 bg-rose-50/60 dark:bg-rose-950/30 ring-1 ring-rose-500/30"
-              : "border-rose-200/80 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10 hover:border-rose-400 dark:hover:border-rose-800"
+              ? "border-rose-600 bg-rose-50/80 dark:bg-rose-950/40 ring-1 ring-rose-500/30"
+              : "border-rose-200 dark:border-rose-900/50 bg-rose-50/40 dark:bg-rose-950/15 hover:border-rose-400 dark:hover:border-rose-700"
           }`}
         >
-          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-rose-700 dark:text-rose-400">
-            <span className="flex items-center gap-1.5 font-semibold">
+          <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-rose-800 dark:text-rose-300">
+            <span className="flex items-center gap-1 font-semibold">
               <Ban className="h-3.5 w-3.5 text-rose-600 dark:text-rose-400" />
               Stockouts
             </span>
-            <span className="font-mono text-[11px] bg-rose-100 dark:bg-rose-900/50 px-1.5 py-0.5 rounded text-rose-800 dark:text-rose-300">
-              Critical
-            </span>
           </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="font-mono text-2xl font-bold tracking-tight text-rose-800 dark:text-rose-200 tabular-nums">
+          <div className="mt-2 flex items-baseline justify-between gap-1">
+            <span className="font-mono text-2xl font-bold tracking-tight text-rose-900 dark:text-rose-100 tabular-nums">
               {summary.outOfStockCount}
             </span>
-            <span className="text-xs font-medium text-rose-700 dark:text-rose-400 flex items-center gap-0.5">
-              zero stock items
+            <span className="text-xs font-medium text-rose-800 dark:text-rose-300 inline-flex items-center">
+              zero stock
               <ChevronRight className="h-3 w-3" />
             </span>
           </div>
         </button>
 
-        {/* KPI 4: Inbound Batches & Dead Stock Capital */}
-        <div className="flex flex-col justify-between rounded-md border border-zinc-100 dark:border-zinc-900 bg-zinc-50/60 dark:bg-zinc-900/40 p-3.5">
-          <div className="flex items-center justify-between text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            <span className="flex items-center gap-1.5">
-              <Truck className="h-3.5 w-3.5 text-blue-500" />
+        {/* KPI 4 (3 cols): Pending Inbound Batches + Stalled Capital */}
+        <div className="lg:col-span-3 flex flex-col justify-between rounded-md border border-zinc-200/80 dark:border-zinc-800 bg-zinc-50/70 dark:bg-zinc-900/40 p-3.5">
+          <div className="flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-zinc-600 dark:text-zinc-400">
+            <button
+              type="button"
+              onClick={onOpenPendingPOs}
+              className="inline-flex items-center gap-1.5 hover:text-zinc-900 dark:hover:text-zinc-100 transition-colors cursor-pointer font-semibold"
+            >
+              <Truck className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
               Pending Inbound
-            </span>
-            <span className="font-mono text-[11px] text-zinc-500">
-              {summary.pendingInboundBatches} PO Batches
-            </span>
+            </button>
+            <button
+              type="button"
+              onClick={onOpenPendingPOs}
+              className="font-mono text-[11px] font-semibold text-blue-700 dark:text-blue-400 hover:underline cursor-pointer tabular-nums"
+            >
+              {summary.pendingInboundBatches} POs
+            </button>
           </div>
-          <div className="mt-2 flex items-baseline justify-between">
-            <span className="font-mono text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100 tabular-nums">
-              +{summary.pendingInboundUnits}{" "}
-              <span className="text-xs font-normal text-zinc-500">units</span>
-            </span>
-            <div className="text-right">
-              <span className="block text-[10px] text-zinc-500 uppercase tracking-wider">
+          <div className="mt-2 flex items-end justify-between gap-2">
+            <div>
+              <span className="font-mono text-xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 tabular-nums">
+                +{summary.pendingInboundUnits.toLocaleString("en-BD")}
+              </span>
+              <span className="ml-1 text-[11px] text-zinc-500">units</span>
+            </div>
+            <button
+              type="button"
+              onClick={() =>
+                onFilterChange(
+                  activeFilter === "discontinued" ? "all" : "discontinued"
+                )
+              }
+              className="text-right group cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 rounded px-1 -mx-1"
+            >
+              <span className="flex items-center justify-end gap-1 text-[10px] text-zinc-500 uppercase tracking-wider group-hover:text-zinc-800 dark:group-hover:text-zinc-200">
+                <Archive className="h-2.5 w-2.5" />
                 Stalled Capital
               </span>
-              <span className="font-mono text-xs font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">
-                {formattedDeadStockCapital}
+              <span className="font-mono text-xs font-semibold text-zinc-800 dark:text-zinc-200 tabular-nums">
+                {formatBDT(summary.deadStockCapitalBDT)}
               </span>
-            </div>
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Operational Filter Shortcut Strip */}
+      {/* Shared-Element Animated Quick Filter Strip */}
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 dark:border-zinc-800/80 pt-3 text-xs">
-        <div className="flex items-center gap-2 text-zinc-600 dark:text-zinc-400">
-          <span className="font-semibold text-zinc-700 dark:text-zinc-300">
+        <div
+          role="tablist"
+          aria-label="Quick stock status filter"
+          className="flex flex-wrap items-center gap-1"
+        >
+          <span className="mr-1.5 font-semibold text-zinc-700 dark:text-zinc-300">
             Quick Filter:
           </span>
-          <button
-            type="button"
-            onClick={() => onFilterChange("all")}
-            className={`rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${
-              activeFilter === "all"
-                ? "bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-          >
-            All Ledger ({summary.totalSkus})
-          </button>
-          <button
-            type="button"
-            onClick={() => onFilterChange("low_stock")}
-            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${
-              activeFilter === "low_stock"
-                ? "bg-amber-600 text-white"
-                : "text-amber-700 hover:bg-amber-100/60 dark:text-amber-400 dark:hover:bg-amber-950/40"
-            }`}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            Below Reorder Point ({summary.itemsBelowReorder})
-          </button>
-          <button
-            type="button"
-            onClick={() => onFilterChange("out_of_stock")}
-            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${
-              activeFilter === "out_of_stock"
-                ? "bg-rose-600 text-white"
-                : "text-rose-700 hover:bg-rose-100/60 dark:text-rose-400 dark:hover:bg-rose-950/40"
-            }`}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-            Stockouts ({summary.outOfStockCount})
-          </button>
-          <button
-            type="button"
-            onClick={() => onFilterChange("discontinued")}
-            className={`inline-flex items-center gap-1 rounded px-2 py-0.5 font-medium transition-colors cursor-pointer ${
-              activeFilter === "discontinued"
-                ? "bg-zinc-600 text-white"
-                : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-            }`}
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-zinc-400" />
-            Dead / Archived ({summary.deadStockCount})
-          </button>
+          {quickFilters.map((tab) => {
+            const isActive = activeFilter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                role="tab"
+                type="button"
+                aria-selected={isActive}
+                onClick={() => onFilterChange(tab.id)}
+                className={`relative rounded-md px-2.5 py-1 text-xs font-medium transition-colors cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400 ${
+                  isActive
+                    ? "text-white dark:text-zinc-900"
+                    : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+                }`}
+              >
+                {isActive && (
+                  <motion.span
+                    layoutId="health-quick-filter"
+                    transition={{ type: "spring", stiffness: 400, damping: 32 }}
+                    className="absolute inset-0 rounded-md bg-zinc-900 dark:bg-zinc-100"
+                  />
+                )}
+                <span className="relative z-10 inline-flex items-center gap-1.5 font-mono text-[11px] tabular-nums">
+                  {tab.dot && (
+                    <span
+                      aria-hidden="true"
+                      className={`h-1.5 w-1.5 rounded-full ${tab.dot}`}
+                    />
+                  )}
+                  {tab.label}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
-        <div className="flex items-center gap-2 font-mono text-[11px] text-zinc-500">
-          <Clock className="h-3 w-3" />
-          <span>Real-time sync: Live</span>
+        <div className="flex items-center gap-1.5 font-mono text-[11px] text-zinc-500">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+          <span>Atomic invariants enforced</span>
         </div>
       </div>
-    </div>
+    </section>
   );
 }

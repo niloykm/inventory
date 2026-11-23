@@ -12,15 +12,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { InventoryItem, AdjustmentReason } from "@/types/inventory";
-import { AlertCircle, ArrowRight, Minus, Plus } from "lucide-react";
+import { AlertCircle, ArrowRight, Minus, Plus, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
 
 interface AdjustStockModalProps {
@@ -93,8 +86,9 @@ export function AdjustStockModal({
         `Stock updated for ${item.sku}: ${numericDelta > 0 ? "+" : ""}${numericDelta} ${item.unit}`
       );
       onClose();
-    } catch (err: any) {
-      toast.error(err?.message || "Failed to adjust stock");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to adjust stock";
+      toast.error(msg);
     } finally {
       setIsSubmitting(false);
     }
@@ -183,24 +177,28 @@ export function AdjustStockModal({
 
             {/* Audit Reason */}
             <div>
-              <Label className="text-xs uppercase tracking-wider text-zinc-500 font-medium">
+              <Label
+                htmlFor="audit-reason-select"
+                className="text-xs uppercase tracking-wider text-zinc-500 font-medium"
+              >
                 Audit Reason *
               </Label>
-              <Select
-                value={reason}
-                onValueChange={(val) => setReason(val as AdjustmentReason)}
-              >
-                <SelectTrigger className="mt-1 text-xs border-zinc-200 dark:border-zinc-800">
-                  <SelectValue placeholder="Select reason" />
-                </SelectTrigger>
-                <SelectContent className="border-zinc-200 dark:border-zinc-800">
+              <div className="relative mt-1">
+                <select
+                  id="audit-reason-select"
+                  aria-label="Audit reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value as AdjustmentReason)}
+                  className="h-9 w-full appearance-none rounded-md border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-950 pl-3 pr-8 text-xs font-medium text-zinc-900 dark:text-zinc-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-zinc-400"
+                >
                   {ADJUSTMENT_REASONS.map((r) => (
-                    <SelectItem key={r} value={r} className="text-xs">
+                    <option key={r} value={r}>
                       {r}
-                    </SelectItem>
+                    </option>
                   ))}
-                </SelectContent>
-              </Select>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-400" />
+              </div>
             </div>
           </div>
 

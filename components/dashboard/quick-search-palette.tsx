@@ -119,7 +119,7 @@ export function QuickSearchPalette({
                       {item.onHand} {item.unit}
                     </span>
                     <span className="block text-[10px] text-zinc-400">
-                      ৳{item.retailPrice.toLocaleString()}
+                      ৳{item.retailPrice.toLocaleString("en-BD")}
                     </span>
                   </div>
                   <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />

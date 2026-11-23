@@ -3,7 +3,9 @@ import {
   WarehouseLocation,
   Supplier,
   StockMovement,
+  PurchaseOrderDraft,
   KPISummary,
+  StockStatus,
 } from "@/types/inventory";
 
 export const WAREHOUSE_LOCATIONS: WarehouseLocation[] = [
@@ -16,7 +18,7 @@ export const WAREHOUSE_LOCATIONS: WarehouseLocation[] = [
 export const SUPPLIERS: Supplier[] = [
   { id: "sup-01", name: "Apex Electronics Ltd", contactPerson: "Rafiqul Islam", email: "procurement@apexelectronics.bd", phone: "+880 1711-203940", leadTimeDays: 4, rating: 4.8 },
   { id: "sup-02", name: "Bengal Industrial Fasteners", contactPerson: "Mahmud Hasan", email: "sales@bengalfasteners.com", phone: "+880 1819-456789", leadTimeDays: 2, rating: 4.6 },
-  { id: "sup-03", name: " Meghna Safety & Workwear", contactPerson: "Nasrin Akhter", email: "orders@meghnasafety.bd", phone: "+880 1912-349812", leadTimeDays: 5, rating: 4.9 },
+  { id: "sup-03", name: "Meghna Safety & Workwear", contactPerson: "Nasrin Akhter", email: "orders@meghnasafety.bd", phone: "+880 1912-349812", leadTimeDays: 5, rating: 4.9 },
   { id: "sup-04", name: "Padma Industrial Packaging", contactPerson: "Kamal Uddin", email: "dispatch@padmapkg.com", phone: "+880 1610-882233", leadTimeDays: 3, rating: 4.4 },
   { id: "sup-05", name: "Delta Optical & Network Tech", contactPerson: "Tanvir Ahmed", email: "supply@deltanet.bd", phone: "+880 1722-114455", leadTimeDays: 7, rating: 4.7 },
 ];
@@ -627,20 +629,144 @@ export const INITIAL_MOVEMENTS: StockMovement[] = [
   },
 ];
 
-export function computeKPISummary(items: InventoryItem[]): KPISummary {
-  const totalSkus = items.length;
-  const totalValuationBDT = items.reduce(
+export const INITIAL_PURCHASE_ORDERS: PurchaseOrderDraft[] = [
+  {
+    id: "po-2026-101",
+    poNumber: "PO-2026-101",
+    itemId: "item-103",
+    sku: "SRV-RAM-32G-D4",
+    itemName: "ECC Registered 32GB DDR4-3200 Server Memory RDIMM",
+    supplierId: "sup-01",
+    supplierName: "Apex Electronics Ltd",
+    locationId: "loc-dhk-01",
+    locationName: "Main Warehouse (Dhaka)",
+    quantity: 30,
+    unit: "units",
+    unitCost: 12500,
+    totalCostBDT: 375000,
+    expectedDate: "2026-11-26",
+    status: "ordered",
+    notes: "Expedited replenishment for Dhaka server rack allocation",
+    createdAt: "2026-11-10T07:30:00Z",
+    createdBy: "S. Hossain (Operations Lead)",
+  },
+  {
+    id: "po-2026-102",
+    poNumber: "PO-2026-102",
+    itemId: "item-102",
+    sku: "NET-SFP-10G-SR",
+    itemName: "10Gbps SFP+ Multi-Mode 850nm LC Transceiver",
+    supplierId: "sup-05",
+    supplierName: "Delta Optical & Network Tech",
+    locationId: "loc-dhk-01",
+    locationName: "Main Warehouse (Dhaka)",
+    quantity: 50,
+    unit: "pcs",
+    unitCost: 4200,
+    totalCostBDT: 210000,
+    expectedDate: "2026-11-28",
+    status: "ordered",
+    notes: "Below reorder point replenishment",
+    createdAt: "2026-11-10T09:10:00Z",
+    createdBy: "Tareq Rahman (Lead Stockman)",
+  },
+  {
+    id: "po-2026-103",
+    poNumber: "PO-2026-103",
+    itemId: "item-114",
+    sku: "PKG-TAPE-BOPP-6",
+    itemName: "Brown Acrylic Carton Sealing BOPP Tape 48mm x 100m (Tower of 6)",
+    supplierId: "sup-04",
+    supplierName: "Padma Industrial Packaging",
+    locationId: "loc-dhk-01",
+    locationName: "Main Warehouse (Dhaka)",
+    quantity: 200,
+    unit: "towers",
+    unitCost: 340,
+    totalCostBDT: 68000,
+    expectedDate: "2026-11-25",
+    status: "ordered",
+    notes: "Monthly dispatch line replenishment",
+    createdAt: "2026-11-09T14:00:00Z",
+    createdBy: "Tareq Rahman (Lead Stockman)",
+  },
+  {
+    id: "po-2026-104",
+    poNumber: "PO-2026-104",
+    itemId: "item-107",
+    sku: "TEX-ESD-LAB-M",
+    itemName: "Cleanroom Anti-Static Conductive Lab Coat - Medium (Navy)",
+    supplierId: "sup-03",
+    supplierName: "Meghna Safety & Workwear",
+    locationId: "loc-ctg-02",
+    locationName: "Secondary Hub (Chittagong)",
+    quantity: 150,
+    unit: "pcs",
+    unitCost: 1450,
+    totalCostBDT: 217500,
+    expectedDate: "2026-11-27",
+    status: "draft",
+    notes: "Chittagong facility restock",
+    createdAt: "2026-11-10T08:40:00Z",
+    createdBy: "Farhana Yasmin (Dispatch Officer)",
+  },
+];
+
+/**
+ * Single source of truth for item stock invariants.
+ * Ensures available = max(0, onHand - reserved) and status stays mathematically aligned.
+ */
+export function deriveItemIntegrity(item: InventoryItem): InventoryItem {
+  const safeOnHand = Math.max(0, Math.floor(Number(item.onHand) || 0));
+  const safeReserved = Math.min(safeOnHand, Math.max(0, Math.floor(Number(item.reserved) || 0)));
+  const safeAvailable = Math.max(0, safeOnHand - safeReserved);
+  const safeReorder = Math.max(0, Math.floor(Number(item.reorderPoint) || 0));
+
+  let derivedStatus: StockStatus = item.status;
+  if (item.status !== "discontinued") {
+    if (safeOnHand === 0) {
+      derivedStatus = "out_of_stock";
+    } else if (safeOnHand <= safeReorder) {
+      derivedStatus = "low_stock";
+    } else {
+      derivedStatus = "in_stock";
+    }
+  }
+
+  return {
+    ...item,
+    onHand: safeOnHand,
+    reserved: safeReserved,
+    available: safeAvailable,
+    reorderPoint: safeReorder,
+    status: derivedStatus,
+  };
+}
+
+export function computeKPISummary(
+  items: InventoryItem[],
+  purchaseOrders: PurchaseOrderDraft[] = INITIAL_PURCHASE_ORDERS
+): KPISummary {
+  const normalized = items.map(deriveItemIntegrity);
+  const totalSkus = normalized.length;
+  const totalValuationBDT = normalized.reduce(
     (sum, item) => sum + item.onHand * item.unitCost,
     0
   );
-  const itemsBelowReorder = items.filter(
-    (i) => i.status !== "discontinued" && i.onHand <= i.reorderPoint
+  const itemsBelowReorder = normalized.filter(
+    (i) => i.status === "low_stock"
   ).length;
-  const outOfStockCount = items.filter(
-    (i) => i.status === "out_of_stock" || (i.onHand === 0 && i.status !== "discontinued")
+  const outOfStockCount = normalized.filter(
+    (i) => i.status === "out_of_stock"
   ).length;
 
-  const deadStockItems = items.filter(
+  const highVelocityAtRiskCount = normalized.filter(
+    (i) =>
+      i.velocityScore === "high" &&
+      (i.status === "low_stock" || i.status === "out_of_stock")
+  ).length;
+
+  const deadStockItems = normalized.filter(
     (i) => i.status === "discontinued" || i.velocityScore === "zero"
   );
   const deadStockCount = deadStockItems.length;
@@ -649,15 +775,20 @@ export function computeKPISummary(items: InventoryItem[]): KPISummary {
     0
   );
 
+  const openPOs = purchaseOrders.filter((po) => po.status !== "received");
+  const pendingInboundBatches = openPOs.length;
+  const pendingInboundUnits = openPOs.reduce((sum, po) => sum + po.quantity, 0);
+
   return {
     totalSkus,
     totalValuationBDT,
-    valuationTrendPercent: 4.8, // +4.8% WoW
+    valuationTrendPercent: 4.8,
     itemsBelowReorder,
     outOfStockCount,
-    pendingInboundBatches: 6,
-    pendingInboundUnits: 840,
+    pendingInboundBatches,
+    pendingInboundUnits,
     deadStockCount,
     deadStockCapitalBDT,
+    highVelocityAtRiskCount,
   };
 }
